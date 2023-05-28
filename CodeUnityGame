@@ -1,0 +1,202 @@
+////////////////////////////////////////////////GameLogic
+
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+
+public class GameLogic : MonoBehaviour
+{
+    public PlayerScript player;
+    public List<GameObject> enemy;
+    public GameObject win;
+    public GameObject lose;
+    public void nextLevel()
+    {
+        GameObject.FindGameObjectWithTag("SceneController").GetComponent<SceneScript>().loadNextScene();
+    }
+    public void restart()
+    {
+        GameObject.FindGameObjectWithTag("SceneController").GetComponent<SceneScript>().reloadScene();
+    }
+    // Start is called before the first frame update
+    void Start()
+    {
+       
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if(enemy.Count == 0)
+        {
+            win.SetActive(true);
+        }
+        if(float.Parse(player.ammo.text) == 0 && GameObject.FindGameObjectsWithTag("Bullet").Length == 0)
+        {
+            lose.SetActive(true);
+        }
+    }
+}
+
+////////////////////////////////////////////////Bullet
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Bullet : MonoBehaviour
+{
+    public float timeToLife;
+    public float bulletSpeed;
+    private float bouncesLeft;
+    public float maxBounces;
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        bouncesLeft--;
+        if(bouncesLeft <= 0)
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        bouncesLeft = maxBounces;
+        GetComponent<Rigidbody2D>().AddForce(transform.right * bulletSpeed, ForceMode2D.Impulse);
+        Destroy(gameObject, timeToLife);
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+    }
+}
+
+////////////////////////////////////////////////Player
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+
+public class PlayerScript : MonoBehaviour
+{
+    public GameObject bullet;
+    public Transform barrelPos;
+    public TextMeshProUGUI ammo;
+    public GameObject weapon;
+    public float maxAngle;
+    public float minAngle;
+    public Animator fire;
+    public float shootCooldown;
+    private float shootTimer;
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        //Weapon Rotation
+        Vector3 rotation = Camera.main.ScreenToWorldPoint(Input.mousePosition) - weapon.transform.position;
+        float rotZ = Mathf.Atan2(rotation.y, rotation.x) * Mathf.Rad2Deg;
+        weapon.transform.rotation = Quaternion.Euler(0, 0, Mathf.Clamp(rotZ, minAngle, maxAngle));
+        
+        //Shoot
+        float ammonition = float.Parse(ammo.text);
+
+        
+        if (Input.GetMouseButtonDown(0) && ammonition > 0 && shootTimer < Time.time)
+        {
+            fire.SetTrigger("fire");
+            shootTimer = Time.time + shootCooldown;
+            GetComponent<AudioSource>().Play();
+            Instantiate<GameObject>(bullet, barrelPos.position, weapon.transform.rotation);
+            ammonition = ammonition - 1;
+            ammo.text = ammonition.ToString();
+        }
+    }
+}
+
+////////////////////////////////////////////////Enemy
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Enemy : MonoBehaviour
+{
+
+    private bool isDead = false;
+    public void death()
+    {
+        GameObject.FindGameObjectWithTag("GameController").GetComponent<GameLogic>().enemy.Remove(this.gameObject);
+        Destroy(this.gameObject);
+    }
+    
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.tag == "Bullet" && !isDead)
+        {
+            isDead = true;
+            GetComponent<Animator>().SetTrigger("Death");
+            GetComponent<AudioSource>().Play();
+            Destroy(collision.gameObject);
+            
+        }
+    }
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+    }
+}
+
+////////////////////////////////////////////////SceneLoader
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class SceneScript : MonoBehaviour
+{
+    public SceneManager SceneManager;
+    public float currentLevel = 1;
+    public void loadNextScene()
+    {
+        SceneManager.LoadScene("Level_" + currentLevel);
+        currentLevel += 0.1f;
+    }
+    public void loadScene(float level)
+    {
+        SceneManager.LoadScene("Level_" + level);
+    }
+    public void reloadScene()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+    // Start is called before the first frame update
+    void Start()
+    {
+        DontDestroyOnLoad(this.gameObject);
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        if(Input.GetKeyDown(KeyCode.Escape))
+        {
+            Application.Quit();
+        }
+    }
+}
